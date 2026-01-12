@@ -38,6 +38,14 @@ function App() {
     event: CalendarEvent | null
   }>({ isOpen: false, position: { x: 0, y: 0 }, event: null })
 
+  const handleTasksCreated = async (newTasks: { title: string; duration: number }[]) => {
+    for (const t of newTasks) {
+      await taskHook.addTask(t.title, t.duration)
+    }
+  }
+
+  const brainDump = useBrainDump(handleTasksCreated)
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -63,21 +71,16 @@ function App() {
         case 'c':
           calendarHook.toggleCompact()
           break
+        case 'b':
+          e.preventDefault()
+          brainDump.open()
+          break
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [calendarHook])
-
-
-  const handleTasksCreated = async (newTasks: { title: string; duration: number }[]) => {
-    for (const t of newTasks) {
-      await taskHook.addTask(t.title, t.duration)
-    }
-  }
-
-  const brainDump = useBrainDump(handleTasksCreated)
+  }, [calendarHook, brainDump])
 
   const handleDragStart = (dragEvent: DragStartEvent) => {
     const activeId = dragEvent.active.id as string
