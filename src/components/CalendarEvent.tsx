@@ -172,14 +172,18 @@ export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnI
     if (isDeleteMode && onDeleteModeClick) {
       e.preventDefault()
       e.stopPropagation()
+      // Clear any text selection caused by shift+click
+      window.getSelection()?.removeAllRanges()
       onDeleteModeClick()
     }
   }
 
-  // Delete mode styling
-  const deleteModeStyle = isDeleteMode && isHovering
-    ? { backgroundColor: '#ef4444', boxShadow: '0 0 0 2px #ef4444' }
-    : {}
+  const handleContainerMouseDown = (e: React.MouseEvent) => {
+    // Prevent text selection on shift+click in delete mode
+    if (isDeleteMode && e.shiftKey) {
+      e.preventDefault()
+    }
+  }
 
   return (
     <div
@@ -190,18 +194,24 @@ export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnI
       style={{
         top: `${displayTop}px`,
         height: `${displayHeight}px`,
-        backgroundColor: eventStyle.backgroundColor,
+        backgroundColor: isDeleteMode && isHovering ? '#ef4444' : eventStyle.backgroundColor,
         color: eventStyle.color,
-        ...horizontalStyle,
-        ...deleteModeStyle
+        ...horizontalStyle
       }}
       onContextMenu={handleRightClick}
       onClick={handleClick}
+      onMouseDown={handleContainerMouseDown}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       {...attributes}
       {...listeners}
     >
+      {/* Delete overlay */}
+      {isDeleteMode && isHovering && (
+        <div className="absolute inset-0 flex items-center justify-center bg-red-500 rounded-md z-10">
+          <span className="text-white font-semibold text-xs">Delete</span>
+        </div>
+      )}
       {/* Resize handles - now available for ALL events */}
       {onResize && (
         <div
