@@ -8,9 +8,12 @@ interface Props {
   onBrainDump: () => void
   width: number
   onResize: (width: number) => void
+  isDeleteMode?: boolean
+  onDeleteModeClick?: (taskId: string) => void
+  onClearAllTasks?: () => void
 }
 
-export function Sidebar({ taskHook, onBrainDump, width, onResize }: Props) {
+export function Sidebar({ taskHook, onBrainDump, width, onResize, isDeleteMode, onDeleteModeClick, onClearAllTasks }: Props) {
   const { getTasksBySection, updateTaskDuration, removeTask, updateTaskTitle, addTask } = taskHook
   const [showAddInput, setShowAddInput] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
@@ -59,12 +62,21 @@ export function Sidebar({ taskHook, onBrainDump, width, onResize }: Props) {
         className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 transition-colors z-10"
         onMouseDown={handleResizeStart}
       />
-      <button
-        onClick={onBrainDump}
-        className="w-full mb-4 py-2 px-4 bg-neutral-800 text-white text-sm font-medium rounded-lg hover:bg-neutral-700 transition-colors"
-      >
-        🧠 Brain Dump
-      </button>
+      {isDeleteMode ? (
+        <button
+          onClick={onClearAllTasks}
+          className="w-full mb-4 py-2 px-4 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition-colors"
+        >
+          🗑️ Clear All Tasks
+        </button>
+      ) : (
+        <button
+          onClick={onBrainDump}
+          className="w-full mb-4 py-2 px-4 bg-neutral-800 text-white text-sm font-medium rounded-lg hover:bg-neutral-700 transition-colors"
+        >
+          🧠 Brain Dump
+        </button>
+      )}
 
       {SECTIONS.map(section => (
         <div key={section.id}>
@@ -108,6 +120,8 @@ export function Sidebar({ taskHook, onBrainDump, width, onResize }: Props) {
             onDelete={removeTask}
             onTitleChange={updateTaskTitle}
             hideHeader={section.id === 'inbox'}
+            isDeleteMode={isDeleteMode}
+            onDeleteModeClick={onDeleteModeClick}
           />
         </div>
       ))}

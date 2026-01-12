@@ -113,6 +113,17 @@ export function useTasks(userId: string | undefined) {
       .sort((a, b) => a.position - b.position)
   }
 
+  const restoreTask = async (task: Task) => {
+    const restored = await api.createTask({
+      title: task.title,
+      duration: task.duration,
+      section: task.section,
+      position: task.position
+    })
+    setTasks(prev => [...prev, restored])
+    return restored
+  }
+
   return {
     tasks,
     loading,
@@ -124,6 +135,7 @@ export function useTasks(userId: string | undefined) {
     scheduleTask,
     unscheduleTask,
     getTasksBySection,
+    restoreTask,
     reload: loadTasks,
   }
 }

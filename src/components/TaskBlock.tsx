@@ -9,9 +9,11 @@ interface Props {
   onDurationChange: (duration: number) => void
   onDelete: () => void
   onTitleChange?: (newTitle: string) => void
+  isDeleteMode?: boolean
+  onDeleteModeClick?: () => void
 }
 
-export function TaskBlock({ task, onDurationChange, onDelete, onTitleChange }: Props) {
+export function TaskBlock({ task, onDurationChange, onDelete, onTitleChange, isDeleteMode, onDeleteModeClick }: Props) {
   const {
     attributes,
     listeners,
@@ -25,6 +27,7 @@ export function TaskBlock({ task, onDurationChange, onDelete, onTitleChange }: P
   const [titleValue, setTitleValue] = useState(task.title)
   const [showMenu, setShowMenu] = useState(false)
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 })
+  const [isHovering, setIsHovering] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -105,16 +108,43 @@ export function TaskBlock({ task, onDurationChange, onDelete, onTitleChange }: P
     onDelete()
   }
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (isDeleteMode && onDeleteModeClick) {
+      e.preventDefault()
+      e.stopPropagation()
+      // Clear any text selection caused by shift+click
+      window.getSelection()?.removeAllRanges()
+      onDeleteModeClick()
+    }
+  }
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Prevent text selection on shift+click in delete mode
+    if (isDeleteMode && e.shiftKey) {
+      e.preventDefault()
+    }
+  }
+
   return (
     <>
       <div
         ref={setNodeRef}
         style={style}
-        className={`bg-white border border-neutral-200 rounded-lg p-2 shadow-sm ${
+        className={`relative border rounded-lg p-2 shadow-sm ${
           isDragging ? 'opacity-50 shadow-lg' : ''
-        }`}
+        } ${isDeleteMode && isHovering ? 'border-red-400 cursor-pointer' : 'bg-white border-neutral-200'}`}
         onContextMenu={handleRightClick}
+        onClick={handleClick}
+        onMouseDown={handleMouseDown}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
       >
+        {/* Delete overlay */}
+        {isDeleteMode && isHovering && (
+          <div className="absolute inset-0 flex items-center justify-center bg-red-400/50 rounded-lg z-10">
+            <span className="text-red-700 font-semibold text-sm">Delete</span>
+          </div>
+        )}
         <div className="flex items-start gap-2 mb-1.5" {...attributes} {...listeners}>
           {editing ? (
             <input

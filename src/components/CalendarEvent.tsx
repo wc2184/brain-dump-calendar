@@ -11,9 +11,11 @@ interface Props {
   totalColumns?: number
   onResize?: (eventId: string, startTime: string, duration: number) => void
   onContextMenu?: (event: CalendarEventType, position: { x: number; y: number }) => void
+  isDeleteMode?: boolean
+  onDeleteModeClick?: () => void
 }
 
-export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnIndex = 0, totalColumns = 1, onResize, onContextMenu }: Props) {
+export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnIndex = 0, totalColumns = 1, onResize, onContextMenu, isDeleteMode, onDeleteModeClick }: Props) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `event-${event.id}`,
     data: { type: 'calendar-event', event }
@@ -27,6 +29,8 @@ export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnI
   const baseTop = (startHour - displayStartHour) * hourHeight
   // True height based on duration with 2px gap at bottom
   const baseHeight = (durationMins / 60) * hourHeight - 2
+
+  const [isHovering, setIsHovering] = useState(false)
 
   // Real-time resize preview state
   const [resizePreview, setResizePreview] = useState<{
@@ -164,12 +168,29 @@ export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnI
     }
   }
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (isDeleteMode && onDeleteModeClick) {
+      e.preventDefault()
+      e.stopPropagation()
+      // Clear any text selection caused by shift+click
+      window.getSelection()?.removeAllRanges()
+      onDeleteModeClick()
+    }
+  }
+
+  const handleContainerMouseDown = (e: React.MouseEvent) => {
+    // Prevent text selection on shift+click in delete mode
+    if (isDeleteMode && e.shiftKey) {
+      e.preventDefault()
+    }
+  }
+
   return (
     <div
       ref={setNodeRef}
-      className={`absolute rounded-md px-2 py-1 text-xs overflow-hidden cursor-grab hover:opacity-90 ${
+      className={`absolute rounded-md px-2 py-1 text-xs overflow-hidden hover:opacity-90 ${
         resizePreview ? 'opacity-80 shadow-lg' : ''
-      } ${isDragging ? 'opacity-50 shadow-xl z-50' : ''}`}
+      } ${isDragging ? 'opacity-50 shadow-xl z-50' : ''} ${isDeleteMode ? 'cursor-pointer' : 'cursor-grab'}`}
       style={{
         top: `${displayTop}px`,
         height: `${displayHeight}px`,
@@ -178,9 +199,19 @@ export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnI
         ...horizontalStyle
       }}
       onContextMenu={handleRightClick}
+      onClick={handleClick}
+      onMouseDown={handleContainerMouseDown}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
       {...attributes}
       {...listeners}
     >
+      {/* Delete overlay */}
+      {isDeleteMode && isHovering && (
+        <div className="absolute inset-0 flex items-center justify-center bg-red-400/50 rounded-md z-10">
+          <span className="text-red-700 font-semibold text-xs">Delete</span>
+        </div>
+      )}
       {/* Resize handles - now available for ALL events */}
       {onResize && (
         <div
