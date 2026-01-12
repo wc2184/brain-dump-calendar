@@ -364,7 +364,18 @@ function App() {
       await taskHook.moveTask(taskId, targetSection, sectionTasks.length)
     } else if (targetTask) {
       // Same-section reorder via sortable
-      await taskHook.moveTask(taskId, targetTask.section, targetTask.position)
+      const draggedTask = taskHook.tasks.find(t => t.id === taskId)
+      if (draggedTask && draggedTask.section === targetTask.section) {
+        // Same section reorder
+        // When dragging DOWN, use position+1 to insert AFTER target
+        // When dragging UP, use target position to insert AT target
+        const newPosition = draggedTask.position < targetTask.position
+          ? targetTask.position + 1  // dragging down: insert after target
+          : targetTask.position      // dragging up: insert at target position
+        await taskHook.moveTask(taskId, targetTask.section, newPosition)
+      } else {
+        await taskHook.moveTask(taskId, targetTask.section, targetTask.position)
+      }
     } else if (crossSectionTargetTask) {
       // Cross-section drop on a task - move to that section at target position
       const draggedTask = taskHook.tasks.find(t => t.id === taskId)
