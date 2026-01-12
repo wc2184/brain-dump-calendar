@@ -360,8 +360,8 @@ function App() {
     const crossSectionTargetTask = taskDropMatch ? taskHook.tasks.find(t => t.id === taskDropMatch[1]) : null
 
     if (targetSection) {
-      const sectionTasks = taskHook.getTasksBySection(targetSection)
-      await taskHook.moveTask(taskId, targetSection, sectionTasks.length)
+      // Use Infinity to ensure we append to the very end (insertIndex will be -1)
+      await taskHook.moveTask(taskId, targetSection, Infinity)
     } else if (targetTask) {
       // Same-section reorder via sortable
       const draggedTask = taskHook.tasks.find(t => t.id === taskId)
