@@ -385,9 +385,9 @@ function App() {
     }
   }
 
-  // Event resize handler
-  const handleEventResize = async (eventId: string, startTime: string, duration: number) => {
-    await calendarHook.updateEvent(eventId, { startTime, duration })
+  // Event resize handler - optimistic update
+  const handleEventResize = (eventId: string, startTime: string, duration: number) => {
+    calendarHook.updateEventOptimistic(eventId, { startTime, duration })
   }
 
   // Context menu handlers
@@ -536,6 +536,11 @@ function App() {
             onToday={calendarHook.goToToday}
             isDeleteMode={isDeleteMode}
             onDeleteModeClick={handleDeleteModeEvent}
+            draggedDuration={
+              activeTask ? activeTask.duration :
+              activeEvent ? Math.round((new Date(activeEvent.end).getTime() - new Date(activeEvent.start).getTime()) / 60000) :
+              undefined
+            }
           />
         </div>
       </div>
@@ -571,31 +576,19 @@ function App() {
 
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
 
-      <DragOverlay>
+      <DragOverlay dropAnimation={null}>
         {activeTask && (
-          <div className="w-64">
-            <TaskBlock
-              task={activeTask}
-              onDurationChange={() => {}}
-              onDelete={() => {}}
-            />
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-neutral-700 text-white rounded-lg shadow-lg text-sm max-w-[200px]">
+            <span className="truncate">{activeTask.title}</span>
+            <span className="text-neutral-300 text-xs whitespace-nowrap">({activeTask.duration}m)</span>
           </div>
         )}
         {activeEvent && (() => {
-          const durationMins = (new Date(activeEvent.end).getTime() - new Date(activeEvent.start).getTime()) / 60000
-          const hourHeight = calendarHook.isCompact ? 85 : 150
-          const height = Math.max((durationMins / 60) * hourHeight, 20)
+          const durationMins = Math.round((new Date(activeEvent.end).getTime() - new Date(activeEvent.start).getTime()) / 60000)
           return (
-            <div
-              className="w-48 rounded-md px-2 py-1 text-xs text-white shadow-lg overflow-hidden"
-              style={{ backgroundColor: '#039BE5', height: `${height}px` }}
-            >
-              <div className="font-medium truncate">{activeEvent.title}</div>
-              <div className="text-[10px] opacity-75">
-                {new Date(activeEvent.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                {' - '}
-                {new Date(activeEvent.end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-              </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-neutral-700 text-white rounded-lg shadow-lg text-sm max-w-[200px]">
+              <span className="truncate">{activeEvent.title}</span>
+              <span className="text-neutral-300 text-xs whitespace-nowrap">({durationMins}m)</span>
             </div>
           )
         })()}
