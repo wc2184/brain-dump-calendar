@@ -221,8 +221,8 @@ export function useTasks(userId: string | undefined) {
       return updatedTasks
     })
 
-    // Fire API calls in background
-    api.updateTask(taskId, { scheduled: null, google_id: null })
+    // Fire API calls in background - include section update!
+    api.updateTask(taskId, { scheduled: null, google_id: null, section: toSection })
       .then(async () => {
         // Sync positions to backend
         const currentTasks = await api.fetchTasks()
