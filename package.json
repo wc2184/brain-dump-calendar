@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",
-    "test:ci": "vitest run"
+    "test:ci": "vitest run --reporter=verbose"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
