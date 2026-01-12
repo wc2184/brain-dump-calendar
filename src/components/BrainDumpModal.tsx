@@ -1,17 +1,28 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { BRAIN_DUMP_PROMPTS } from '../types'
 import { useGoals } from '../hooks/useGoals'
 
 interface Props {
   isOpen: boolean
   loading: boolean
+  tentativeText: string
+  onTextChange: (text: string) => void
+  onBlur: () => void
   onClose: () => void
   onSubmit: (text: string) => void
 }
 
-export function BrainDumpModal({ isOpen, loading, onClose, onSubmit }: Props) {
-  const [text, setText] = useState('')
+export function BrainDumpModal({
+  isOpen,
+  loading,
+  tentativeText,
+  onTextChange,
+  onBlur,
+  onClose,
+  onSubmit
+}: Props) {
   const goals = useGoals()
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // ESC key to close
   useEffect(() => {
@@ -19,20 +30,30 @@ export function BrainDumpModal({ isOpen, loading, onClose, onSubmit }: Props) {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         goals.saveNow()
+        onBlur()
         onClose()
       }
     }
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
-  }, [isOpen, onClose, goals])
+  }, [isOpen, onClose, onBlur, goals])
+
+  // Focus textarea and move cursor to end when modal opens
+  useEffect(() => {
+    if (isOpen && textareaRef.current) {
+      const textarea = textareaRef.current
+      textarea.focus()
+      const len = tentativeText.length
+      textarea.setSelectionRange(len, len)
+    }
+  }, [isOpen]) // Only on open, not on text change
 
   if (!isOpen) return null
 
   const handleSubmit = () => {
-    if (text.trim()) {
+    if (tentativeText.trim()) {
       goals.saveNow()
-      onSubmit(text)
-      setText('')
+      onSubmit(tentativeText)
     }
   }
 
@@ -40,21 +61,36 @@ export function BrainDumpModal({ isOpen, loading, onClose, onSubmit }: Props) {
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       goals.saveNow()
+      onBlur()
       onClose()
     }
   }
 
   const handleClose = () => {
     goals.saveNow()
+    onBlur()
     onClose()
   }
 
-  // Auto-insert "- " on Enter for list-style input
+  // Handle keydown for Enter (new line with dash) and first char dash
   const handleKeyDown = (
     e: React.KeyboardEvent<HTMLTextAreaElement>,
     value: string,
     setValue: (v: string) => void
   ) => {
+    // First char in empty textarea - prepend "- "
+    if (!value && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault()
+      setValue('- ' + e.key)
+      // Cursor will be at position 3 after React re-renders
+      setTimeout(() => {
+        const textarea = e.currentTarget
+        textarea.selectionStart = textarea.selectionEnd = 3
+      }, 0)
+      return
+    }
+
+    // Enter key - add new line with dash
     if (e.key === 'Enter') {
       e.preventDefault()
       const textarea = e.currentTarget
@@ -62,7 +98,6 @@ export function BrainDumpModal({ isOpen, loading, onClose, onSubmit }: Props) {
       const end = textarea.selectionEnd
       const newValue = value.slice(0, start) + '\n- ' + value.slice(end)
       setValue(newValue)
-      // Set cursor position after "- "
       setTimeout(() => {
         textarea.selectionStart = textarea.selectionEnd = start + 3
       }, 0)
@@ -97,7 +132,6 @@ export function BrainDumpModal({ isOpen, loading, onClose, onSubmit }: Props) {
                 value={goals.mandatory}
                 onChange={(e) => goals.setMandatory(e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, goals.mandatory, goals.setMandatory)}
-                onFocus={(e) => { if (!goals.mandatory) { goals.setMandatory('- '); setTimeout(() => { e.target.selectionStart = e.target.selectionEnd = 2 }, 0) } }}
                 onBlur={goals.saveNow}
                 placeholder="Ship v1 by Friday"
                 className="w-full h-32 p-2 border border-neutral-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-neutral-300"
@@ -112,7 +146,6 @@ export function BrainDumpModal({ isOpen, loading, onClose, onSubmit }: Props) {
                 value={goals.niceToHave}
                 onChange={(e) => goals.setNiceToHave(e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, goals.niceToHave, goals.setNiceToHave)}
-                onFocus={(e) => { if (!goals.niceToHave) { goals.setNiceToHave('- '); setTimeout(() => { e.target.selectionStart = e.target.selectionEnd = 2 }, 0) } }}
                 onBlur={goals.saveNow}
                 placeholder="Refactor auth module"
                 className="w-full h-32 p-2 border border-neutral-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-neutral-300"
@@ -134,13 +167,13 @@ export function BrainDumpModal({ isOpen, loading, onClose, onSubmit }: Props) {
           </div>
 
           <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => handleKeyDown(e, text, setText)}
-            onFocus={(e) => { if (!text) { setText('- '); setTimeout(() => { e.target.selectionStart = e.target.selectionEnd = 2 }, 0) } }}
+            ref={textareaRef}
+            value={tentativeText}
+            onChange={(e) => onTextChange(e.target.value)}
+            onKeyDown={(e) => handleKeyDown(e, tentativeText, onTextChange)}
+            onBlur={onBlur}
             placeholder="Start typing your thoughts..."
             className="w-full h-48 p-3 border border-neutral-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-neutral-300"
-            autoFocus
           />
         </div>
 
@@ -153,7 +186,7 @@ export function BrainDumpModal({ isOpen, loading, onClose, onSubmit }: Props) {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!text.trim() || loading}
+            disabled={!tentativeText.trim() || loading}
             className="px-4 py-2 bg-neutral-800 text-white text-sm font-medium rounded-lg hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Processing...' : 'Extract Tasks'}

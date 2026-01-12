@@ -345,7 +345,7 @@ Return JSON array only, no markdown:
 app.get('/api/goals', getUser, async (req: any, res) => {
   const { data, error } = await supabase
     .from('user_goals')
-    .select('mandatory_goals, nice_to_have_goals')
+    .select('mandatory_goals, nice_to_have_goals, tentative_braindump')
     .eq('user_id', req.user.id)
     .single()
 
@@ -353,20 +353,21 @@ app.get('/api/goals', getUser, async (req: any, res) => {
     return res.status(500).json({ error: error.message })
   }
 
-  res.json(data || { mandatory_goals: '', nice_to_have_goals: '' })
+  res.json(data || { mandatory_goals: '', nice_to_have_goals: '', tentative_braindump: '' })
 })
 
 app.put('/api/goals', getUser, async (req: any, res) => {
-  const { mandatory_goals, nice_to_have_goals } = req.body
+  const { mandatory_goals, nice_to_have_goals, tentative_braindump } = req.body
+
+  // Build update object with only provided fields
+  const updates: any = { user_id: req.user.id, updated_at: new Date().toISOString() }
+  if (mandatory_goals !== undefined) updates.mandatory_goals = mandatory_goals
+  if (nice_to_have_goals !== undefined) updates.nice_to_have_goals = nice_to_have_goals
+  if (tentative_braindump !== undefined) updates.tentative_braindump = tentative_braindump
 
   const { data, error } = await supabase
     .from('user_goals')
-    .upsert({
-      user_id: req.user.id,
-      mandatory_goals: mandatory_goals || '',
-      nice_to_have_goals: nice_to_have_goals || '',
-      updated_at: new Date().toISOString()
-    })
+    .upsert(updates)
     .select()
     .single()
 
