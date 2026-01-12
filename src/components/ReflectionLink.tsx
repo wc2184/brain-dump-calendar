@@ -91,10 +91,11 @@ export function ReflectionLink({ url, onSave }: ReflectionLinkProps) {
           ref={popupRef}
           className="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-lg border border-neutral-200 p-3 z-50 w-80"
         >
-          <label className="block text-sm font-medium text-neutral-700 mb-1">
+          <label htmlFor="reflection-url-input" className="block text-sm font-medium text-neutral-700 mb-1">
             Reflection URL
           </label>
           <input
+            id="reflection-url-input"
             ref={inputRef}
             type="url"
             value={editValue}
