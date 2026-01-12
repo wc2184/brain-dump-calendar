@@ -24,10 +24,10 @@ export function useTasks(userId: string | undefined) {
     }
   }, [userId, loadTasks])
 
-  const addTask = async (title: string, duration: number) => {
-    const inboxTasks = tasks.filter(t => t.section === 'inbox')
-    const position = inboxTasks.length
-    const task = await api.createTask({ title, duration, section: 'inbox', position })
+  const addTask = async (title: string, duration: number, section: SectionType = 'inbox') => {
+    const sectionTasks = tasks.filter(t => t.section === section)
+    const position = sectionTasks.length
+    const task = await api.createTask({ title, duration, section, position })
     setTasks(prev => [...prev, task])
     return task
   }

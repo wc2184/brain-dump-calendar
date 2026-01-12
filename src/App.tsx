@@ -297,15 +297,21 @@ function App() {
           t.google_id === calEvent.id
         )
 
+        // Get position BEFORE any state changes
+        const sectionTasks = taskHook.getTasksBySection(dropSection)
+        const dropPosition = sectionTasks.length
+
         if (linkedTask) {
-          // Unschedule first, then remove from calendar, then move
+          // Existing task: unschedule and move to drop section
           await taskHook.unscheduleTask(linkedTask.id)
           await calendarHook.removeEvent(calEvent.id)
-          // Move to target section at end
-          const sectionTasks = taskHook.getTasksBySection(dropSection)
-          await taskHook.moveTask(linkedTask.id, dropSection, sectionTasks.length)
+          await taskHook.moveTask(linkedTask.id, dropSection, dropPosition)
+        } else {
+          // External calendar event: create new task from it
+          const duration = Math.round((new Date(calEvent.end).getTime() - new Date(calEvent.start).getTime()) / 60000)
+          await taskHook.addTask(calEvent.title, duration, dropSection)
+          await calendarHook.removeEvent(calEvent.id)
         }
-        // If no linked task, this is an external calendar event - do nothing
         return
       }
       return

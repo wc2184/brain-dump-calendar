@@ -6,6 +6,7 @@ import type { CalendarEvent, Task, SectionType } from '../types'
 
 interface DragResult {
   shouldUnschedule: boolean
+  shouldCreateTask: boolean
   targetSection: SectionType | null
   linkedTaskId: string | null
 }
@@ -17,14 +18,16 @@ function handleEventToSidebarDrop(
   tasks: Task[],
   sections: { id: SectionType }[]
 ): DragResult {
+  const noAction = { shouldUnschedule: false, shouldCreateTask: false, targetSection: null, linkedTaskId: null }
+
   // Must be an event drag
   if (!activeId.startsWith('event-')) {
-    return { shouldUnschedule: false, targetSection: null, linkedTaskId: null }
+    return noAction
   }
 
   // Check if dropped on timeslot (not sidebar)
   if (overId.startsWith('timeslot-')) {
-    return { shouldUnschedule: false, targetSection: null, linkedTaskId: null }
+    return noAction
   }
 
   // Check if dropped on a section
@@ -38,20 +41,28 @@ function handleEventToSidebarDrop(
   const dropSection = targetSectionId || targetTask?.section || null
 
   if (!dropSection) {
-    return { shouldUnschedule: false, targetSection: null, linkedTaskId: null }
+    return noAction
   }
 
   // Find linked task
-  const linkedTask = event.taskId
-    ? tasks.find(t => t.id === event.taskId)
-    : tasks.find(t => t.google_id === event.id)
+  const linkedTask = tasks.find(t =>
+    (event.taskId && t.id === event.taskId) ||
+    t.google_id === event.id
+  )
 
   if (!linkedTask) {
-    return { shouldUnschedule: false, targetSection: null, linkedTaskId: null }
+    // External event - create new task
+    return {
+      shouldUnschedule: false,
+      shouldCreateTask: true,
+      targetSection: dropSection,
+      linkedTaskId: null
+    }
   }
 
   return {
     shouldUnschedule: true,
+    shouldCreateTask: false,
     targetSection: dropSection,
     linkedTaskId: linkedTask.id
   }
@@ -122,22 +133,24 @@ describe('drag calendar event to sidebar', () => {
     expect(result.targetSection).toBeNull()
   })
 
-  it('does NOT unschedule when no linked task found', () => {
-    const eventWithoutTask: CalendarEvent = {
+  it('creates new task when no linked task found (external event)', () => {
+    const externalEvent: CalendarEvent = {
       ...mockEvent,
       taskId: null,
-      id: 'unlinked-event'
+      id: 'external-event'
     }
 
     const result = handleEventToSidebarDrop(
-      'event-unlinked-event',
+      'event-external-event',
       'inbox',
-      eventWithoutTask,
+      externalEvent,
       mockTasks,
       sections
     )
 
-    expect(result.shouldUnschedule).toBe(false)
+    // External events should trigger task creation
+    expect(result.shouldCreateTask).toBe(true)
+    expect(result.targetSection).toBe('inbox')
   })
 
   it('finds linked task via google_id when taskId is null', () => {
