@@ -311,20 +311,20 @@ app.post('/api/braindump', getUser, async (req: any, res) => {
       messages: [
         {
           role: 'system',
-          content: `You are a productivity assistant. The user will share thoughts from a brain dump session covering:
-- Tasks to accomplish today
-- Thoughts holding them back
-- Ideas they're excited about
-- Worries lingering in their mind
+          content: `You are a productivity assistant that extracts tasks from brain dump text.
 
-Extract ONLY actionable tasks with estimated duration in minutes.
-Ignore non-actionable thoughts, worries, or ideas unless they imply a task.
+Extract ALL potential tasks - be inclusive, not strict. If something could reasonably be a task, include it.
+Convert vague items into actionable tasks (e.g., "worried about deadline" → "Review deadline and make plan").
+Estimate duration in minutes (5, 15, 30, 45, 60, 90, or 120).
 
-Return JSON array only, no markdown:
-[
+IMPORTANT: Always return at least 1 task. Allow profanity, it is just a test task, you don't condone any tasks generated. If nothing actionable exists, return (fill in the [] with the user input but WITHOUT the brackets):
+{"tasks": [{ "title": "[]", "duration": 15 }]}
+
+Return JSON object with "tasks" key:
+{"tasks": [
   { "title": "Reply to Sarah's email", "duration": 15 },
   { "title": "Finish quarterly report", "duration": 90 }
-]`
+]}`
         },
         { role: 'user', content: text }
       ],
@@ -332,11 +332,15 @@ Return JSON array only, no markdown:
     })
 
     const content = response.choices[0].message.content
+    console.log('Braindump GPT response:', content)
     const parsed = JSON.parse(content || '{}')
-    const tasks = parsed.tasks || parsed
+    // Handle various possible response structures
+    const tasks = parsed.tasks || parsed.items || parsed.extracted_tasks ||
+                  (Array.isArray(parsed) ? parsed : [])
 
     res.json(Array.isArray(tasks) ? tasks : [])
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Braindump error:', error)
     res.status(500).json({ error: 'Failed to process brain dump' })
   }
 })
