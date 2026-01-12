@@ -81,11 +81,13 @@ export function BrainDumpModal({
     // First char in empty textarea - prepend "- "
     if (!value && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault()
+      const textarea = e.currentTarget // Capture ref before setTimeout
       setValue('- ' + e.key)
       // Cursor will be at position 3 after React re-renders
       setTimeout(() => {
-        const textarea = e.currentTarget
-        textarea.selectionStart = textarea.selectionEnd = 3
+        if (textarea) {
+          textarea.selectionStart = textarea.selectionEnd = 3
+        }
       }, 0)
       return
     }
@@ -93,13 +95,15 @@ export function BrainDumpModal({
     // Enter key - add new line with dash
     if (e.key === 'Enter') {
       e.preventDefault()
-      const textarea = e.currentTarget
+      const textarea = e.currentTarget // Capture ref before setTimeout
       const start = textarea.selectionStart
       const end = textarea.selectionEnd
       const newValue = value.slice(0, start) + '\n- ' + value.slice(end)
       setValue(newValue)
       setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + 3
+        if (textarea) {
+          textarea.selectionStart = textarea.selectionEnd = start + 3
+        }
       }, 0)
     }
   }
