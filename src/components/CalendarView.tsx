@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useDroppable } from '@dnd-kit/core'
+import { useDroppable, useDndMonitor } from '@dnd-kit/core'
 import type { CalendarEvent as CalendarEventType } from '../types'
 import { CalendarEvent } from './CalendarEvent'
 
@@ -18,6 +18,7 @@ interface Props {
   onToday: () => void
   isDeleteMode?: boolean
   onDeleteModeClick?: (eventId: string) => void
+  draggedDuration?: number // Duration in minutes of item being dragged
 }
 
 const HOUR_HEIGHT_NORMAL = 150
@@ -208,7 +209,8 @@ export function CalendarView({
   onNextDay,
   onToday,
   isDeleteMode,
-  onDeleteModeClick
+  onDeleteModeClick,
+  draggedDuration
 }: Props) {
   const [hourRange, setHourRange] = useState(loadSavedRange)
   const [currentTime, setCurrentTime] = useState(() => new Date())
@@ -231,6 +233,31 @@ export function CalendarView({
 
   // Hour options for dropdowns
   const hourOptions = Array.from({ length: 24 }, (_, i) => i)
+
+  // Track hovered timeslot for duration preview
+  const [hoveredSlot, setHoveredSlot] = useState<{ dateKey: string; hour: number; minute: number } | null>(null)
+
+  useDndMonitor({
+    onDragOver(event) {
+      const overId = event.over?.id?.toString()
+      if (overId?.startsWith('timeslot-')) {
+        // Parse: timeslot-YYYY-MM-DD-HH-MM
+        const parts = overId.split('-')
+        const dateKey = `${parts[1]}-${parts[2]}-${parts[3]}`
+        const hour = parseInt(parts[4])
+        const minute = parseInt(parts[5])
+        setHoveredSlot({ dateKey, hour, minute })
+      } else {
+        setHoveredSlot(null)
+      }
+    },
+    onDragEnd() {
+      setHoveredSlot(null)
+    },
+    onDragCancel() {
+      setHoveredSlot(null)
+    }
+  })
 
   return (
     <div className="flex-1 bg-white flex flex-col overflow-hidden">
@@ -392,6 +419,7 @@ export function CalendarView({
                     minute={minute}
                     hourHeight={HOUR_HEIGHT}
                     displayStartHour={hourRange.start}
+                    hideDragHighlight={!!draggedDuration}
                   />
                 ))
               ))}
@@ -429,6 +457,19 @@ export function CalendarView({
                 }
                 return null
               })()}
+
+              {/* Duration preview overlay when dragging */}
+              {hoveredSlot && hoveredSlot.dateKey === dateKey && draggedDuration && (() => {
+                const startHour = hoveredSlot.hour + hoveredSlot.minute / 60
+                const top = (startHour - hourRange.start) * HOUR_HEIGHT
+                const height = (draggedDuration / 60) * HOUR_HEIGHT
+                return (
+                  <div
+                    className="absolute left-1 right-1 bg-blue-400/30 border-2 border-blue-400 rounded-md pointer-events-none z-20"
+                    style={{ top: `${top}px`, height: `${height}px` }}
+                  />
+                )
+              })()}
             </div>
           )
         })}
@@ -443,18 +484,20 @@ function formatHour(h: number): string {
   return `${hour12}${ampm}`
 }
 
-function TimeSlot({ dateKey, hour, minute, hourHeight, displayStartHour }: { dateKey: string; hour: number; minute: number; hourHeight: number; displayStartHour: number }) {
+function TimeSlot({ dateKey, hour, minute, hourHeight, displayStartHour, hideDragHighlight }: { dateKey: string; hour: number; minute: number; hourHeight: number; displayStartHour: number; hideDragHighlight?: boolean }) {
   // Droppable ID format: timeslot-YYYY-MM-DD-HH-MM
   const { setNodeRef, isOver } = useDroppable({ id: `timeslot-${dateKey}-${hour}-${minute}` })
 
   const slotHeight = hourHeight / 4 // 15 minutes = 1/4 hour
+  // Only show default highlight if duration preview isn't active
+  const showHighlight = isOver && !hideDragHighlight
 
   return (
     <div
       ref={setNodeRef}
       className={`absolute left-0 right-0 transition-colors ${
         minute === 0 ? 'border-t border-neutral-100' : ''
-      } ${isOver ? 'bg-blue-200 ring-2 ring-blue-400 ring-inset' : ''}`}
+      } ${showHighlight ? 'bg-blue-200 ring-2 ring-blue-400 ring-inset' : ''}`}
       style={{
         top: `${(hour - displayStartHour) * hourHeight + (minute / 60) * hourHeight}px`,
         height: `${slotHeight}px`
