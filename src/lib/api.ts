@@ -120,6 +120,7 @@ export interface UserGoals {
   mandatory_goals: string
   nice_to_have_goals: string
   tentative_braindump?: string
+  top_priority?: string
 }
 
 export async function getGoals(): Promise<UserGoals> {
