@@ -36,6 +36,7 @@ function App() {
   const [isDeleteMode, setIsDeleteMode] = useState(false)
   const [deletedItems, setDeletedItems] = useState<DeletedItem[]>([])
   const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const deleteModeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Help modal state
   const [showHelp, setShowHelp] = useState(false)
@@ -56,19 +57,54 @@ function App() {
     event: CalendarEvent | null
   }>({ isOpen: false, position: { x: 0, y: 0 }, event: null })
 
-  // Shift key detection for delete mode
+  // Track modal state in a ref so shift detection can check it
+  const modalOpenRef = useRef(false)
+
+  // Shift key detection for delete mode (with 0.75s delay)
   useEffect(() => {
+    const isInInputOrModal = () => {
+      const activeEl = document.activeElement
+      const isInput = activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement
+      return isInput || modalOpenRef.current
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Shift') setIsDeleteMode(true)
+      if (e.key === 'Shift') {
+        // Don't activate in modals or inputs
+        if (isInInputOrModal()) return
+
+        // Clear any existing timeout
+        if (deleteModeTimeoutRef.current) {
+          clearTimeout(deleteModeTimeoutRef.current)
+        }
+
+        // Start 0.75s delay before activating delete mode
+        deleteModeTimeoutRef.current = setTimeout(() => {
+          // Double-check we're still not in modal/input when timeout fires
+          if (!isInInputOrModal()) {
+            setIsDeleteMode(true)
+          }
+        }, 750)
+      }
     }
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'Shift') setIsDeleteMode(false)
+      if (e.key === 'Shift') {
+        // Clear pending timeout
+        if (deleteModeTimeoutRef.current) {
+          clearTimeout(deleteModeTimeoutRef.current)
+          deleteModeTimeoutRef.current = null
+        }
+        setIsDeleteMode(false)
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
+      if (deleteModeTimeoutRef.current) {
+        clearTimeout(deleteModeTimeoutRef.current)
+      }
     }
   }, [])
 
@@ -143,6 +179,11 @@ function App() {
   }
 
   const brainDump = useBrainDump(handleTasksCreated)
+
+  // Sync modal state to ref for shift detection
+  useEffect(() => {
+    modalOpenRef.current = brainDump.isOpen || contextMenu.isOpen || showHelp
+  }, [brainDump.isOpen, contextMenu.isOpen, showHelp])
 
   // Keyboard shortcuts
   useEffect(() => {
