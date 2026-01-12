@@ -78,13 +78,13 @@ function App() {
           clearTimeout(deleteModeTimeoutRef.current)
         }
 
-        // Start 0.75s delay before activating delete mode
+        // Start 0.4s delay before activating delete mode
         deleteModeTimeoutRef.current = setTimeout(() => {
           // Double-check we're still not in modal/input when timeout fires
           if (!isInInputOrModal()) {
             setIsDeleteMode(true)
           }
-        }, 750)
+        }, 400)
       }
     }
     const handleKeyUp = (e: KeyboardEvent) => {
