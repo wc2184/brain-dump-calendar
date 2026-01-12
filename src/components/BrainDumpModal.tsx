@@ -121,6 +121,22 @@ export function BrainDumpModal({
             </button>
           </div>
 
+          {/* Top Priority - single line */}
+          <div className="mb-4 flex items-center gap-2">
+            <label className="text-sm font-medium text-neutral-700 whitespace-nowrap">
+              🐸 #1 Task
+            </label>
+            <input
+              type="text"
+              value={goals.topPriority}
+              onChange={(e) => goals.setTopPriority(e.target.value)}
+              onBlur={goals.saveNow}
+              placeholder="What's the one thing you must do today?"
+              className="flex-1 px-3 py-1.5 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300"
+              disabled={goals.loading}
+            />
+          </div>
+
           {/* Goals Section */}
           <div className="grid grid-cols-2 gap-4 mb-4 p-3 bg-neutral-50 rounded-lg">
             <div>

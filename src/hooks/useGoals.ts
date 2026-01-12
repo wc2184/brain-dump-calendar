@@ -4,13 +4,14 @@ import * as api from '../lib/api'
 export function useGoals() {
   const [mandatory, setMandatory] = useState('')
   const [niceToHave, setNiceToHave] = useState('')
+  const [topPriority, setTopPriority] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
   // Track if there are unsaved changes
   const hasChanges = useRef(false)
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastSaved = useRef({ mandatory: '', niceToHave: '' })
+  const lastSaved = useRef({ mandatory: '', niceToHave: '', topPriority: '' })
 
   // Load goals on mount
   useEffect(() => {
@@ -19,9 +20,11 @@ export function useGoals() {
         const goals = await api.getGoals()
         setMandatory(goals.mandatory_goals)
         setNiceToHave(goals.nice_to_have_goals)
+        setTopPriority(goals.top_priority || '')
         lastSaved.current = {
           mandatory: goals.mandatory_goals,
-          niceToHave: goals.nice_to_have_goals
+          niceToHave: goals.nice_to_have_goals,
+          topPriority: goals.top_priority || ''
         }
       } catch (err) {
         console.error('Failed to load goals:', err)
@@ -33,16 +36,16 @@ export function useGoals() {
   }, [])
 
   // Save function
-  const save = useCallback(async (m: string, n: string) => {
+  const save = useCallback(async (m: string, n: string, t: string) => {
     // Skip if no changes
-    if (m === lastSaved.current.mandatory && n === lastSaved.current.niceToHave) {
+    if (m === lastSaved.current.mandatory && n === lastSaved.current.niceToHave && t === lastSaved.current.topPriority) {
       return
     }
 
     setSaving(true)
     try {
-      await api.saveGoals({ mandatory_goals: m, nice_to_have_goals: n })
-      lastSaved.current = { mandatory: m, niceToHave: n }
+      await api.saveGoals({ mandatory_goals: m, nice_to_have_goals: n, top_priority: t })
+      lastSaved.current = { mandatory: m, niceToHave: n, topPriority: t }
       hasChanges.current = false
     } catch (err) {
       console.error('Failed to save goals:', err)
@@ -62,7 +65,7 @@ export function useGoals() {
     }
 
     debounceTimer.current = setTimeout(() => {
-      save(mandatory, niceToHave)
+      save(mandatory, niceToHave, topPriority)
     }, 500)
 
     return () => {
@@ -70,7 +73,7 @@ export function useGoals() {
         clearTimeout(debounceTimer.current)
       }
     }
-  }, [mandatory, niceToHave, loading, save])
+  }, [mandatory, niceToHave, topPriority, loading, save])
 
   // Immediate save for blur/close events
   const saveNow = useCallback(() => {
@@ -78,15 +81,17 @@ export function useGoals() {
       clearTimeout(debounceTimer.current)
     }
     if (hasChanges.current) {
-      save(mandatory, niceToHave)
+      save(mandatory, niceToHave, topPriority)
     }
-  }, [mandatory, niceToHave, save])
+  }, [mandatory, niceToHave, topPriority, save])
 
   return {
     mandatory,
     niceToHave,
+    topPriority,
     setMandatory,
     setNiceToHave,
+    setTopPriority,
     loading,
     saving,
     saveNow,
