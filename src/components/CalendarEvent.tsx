@@ -16,9 +16,13 @@ interface Props {
 }
 
 export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnIndex = 0, totalColumns = 1, onResize, onContextMenu, isDeleteMode, onDeleteModeClick }: Props) {
+  // Track if currently resizing to disable drag
+  const [isResizing, setIsResizing] = useState(false)
+
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `event-${event.id}`,
-    data: { type: 'calendar-event', event }
+    data: { type: 'calendar-event', event },
+    disabled: isResizing // Disable drag when resizing
   })
 
   const start = new Date(event.start)
@@ -79,6 +83,7 @@ export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnI
     e.preventDefault()
     e.stopPropagation()
 
+    setIsResizing(true) // Disable drag during resize
     const initialY = e.clientY
     const actualBaseHeight = (durationMins / 60) * hourHeight - 2
 
@@ -151,6 +156,7 @@ export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnI
 
     const cleanup = () => {
       setResizePreview(null)
+      setIsResizing(false) // Re-enable drag after resize
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
       document.removeEventListener('keydown', handleKeyDown)
@@ -215,7 +221,8 @@ export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnI
       {/* Resize handles - now available for ALL events */}
       {onResize && (
         <div
-          className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-black/10"
+          className="absolute top-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-black/10"
+          onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => handleMouseDown(e, 'top')}
         />
       )}
@@ -227,7 +234,8 @@ export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnI
       </div>
       {onResize && (
         <div
-          className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-black/10"
+          className="absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-black/10"
+          onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => handleMouseDown(e, 'bottom')}
         />
       )}
