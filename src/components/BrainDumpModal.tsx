@@ -49,12 +49,32 @@ export function BrainDumpModal({ isOpen, loading, onClose, onSubmit }: Props) {
     onClose()
   }
 
+  // Auto-insert "- " on Enter for list-style input
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLTextAreaElement>,
+    value: string,
+    setValue: (v: string) => void
+  ) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const textarea = e.currentTarget
+      const start = textarea.selectionStart
+      const end = textarea.selectionEnd
+      const newValue = value.slice(0, start) + '\n- ' + value.slice(end)
+      setValue(newValue)
+      // Set cursor position after "- "
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + 3
+      }, 0)
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
       onClick={handleBackdropClick}
     >
-      <div className="bg-white rounded-xl w-full max-w-2xl mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl w-full max-w-3xl mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-neutral-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-neutral-800">🧠 Brain Dump</h2>
@@ -67,7 +87,7 @@ export function BrainDumpModal({ isOpen, loading, onClose, onSubmit }: Props) {
           </div>
 
           {/* Goals Section */}
-          <div className="space-y-3 mb-4 p-3 bg-neutral-50 rounded-lg">
+          <div className="grid grid-cols-2 gap-4 mb-4 p-3 bg-neutral-50 rounded-lg">
             <div>
               <label className="text-sm font-medium text-neutral-700 flex items-center gap-1 mb-1">
                 🎯 Mandatory Goals
@@ -76,9 +96,11 @@ export function BrainDumpModal({ isOpen, loading, onClose, onSubmit }: Props) {
               <textarea
                 value={goals.mandatory}
                 onChange={(e) => goals.setMandatory(e.target.value)}
+                onKeyDown={(e) => handleKeyDown(e, goals.mandatory, goals.setMandatory)}
+                onFocus={(e) => { if (!goals.mandatory) { goals.setMandatory('- '); setTimeout(() => { e.target.selectionStart = e.target.selectionEnd = 2 }, 0) } }}
                 onBlur={goals.saveNow}
-                placeholder="- Ship v1 by Friday&#10;- Fix critical bug"
-                className="w-full h-20 p-2 border border-neutral-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-neutral-300"
+                placeholder="Ship v1 by Friday"
+                className="w-full h-32 p-2 border border-neutral-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-neutral-300"
                 disabled={goals.loading}
               />
             </div>
@@ -89,9 +111,11 @@ export function BrainDumpModal({ isOpen, loading, onClose, onSubmit }: Props) {
               <textarea
                 value={goals.niceToHave}
                 onChange={(e) => goals.setNiceToHave(e.target.value)}
+                onKeyDown={(e) => handleKeyDown(e, goals.niceToHave, goals.setNiceToHave)}
+                onFocus={(e) => { if (!goals.niceToHave) { goals.setNiceToHave('- '); setTimeout(() => { e.target.selectionStart = e.target.selectionEnd = 2 }, 0) } }}
                 onBlur={goals.saveNow}
-                placeholder="- Refactor auth module&#10;- Add dark mode"
-                className="w-full h-20 p-2 border border-neutral-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-neutral-300"
+                placeholder="Refactor auth module"
+                className="w-full h-32 p-2 border border-neutral-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-neutral-300"
                 disabled={goals.loading}
               />
             </div>
@@ -112,6 +136,8 @@ export function BrainDumpModal({ isOpen, loading, onClose, onSubmit }: Props) {
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => handleKeyDown(e, text, setText)}
+            onFocus={(e) => { if (!text) { setText('- '); setTimeout(() => { e.target.selectionStart = e.target.selectionEnd = 2 }, 0) } }}
             placeholder="Start typing your thoughts..."
             className="w-full h-48 p-3 border border-neutral-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-neutral-300"
             autoFocus
