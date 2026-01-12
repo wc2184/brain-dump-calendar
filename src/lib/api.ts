@@ -115,3 +115,26 @@ export async function braindump(text: string): Promise<{ title: string; duration
   if (!res.ok) throw new Error('Failed to process braindump')
   return res.json()
 }
+
+export interface UserGoals {
+  mandatory_goals: string
+  nice_to_have_goals: string
+}
+
+export async function getGoals(): Promise<UserGoals> {
+  const headers = await getAuthHeaders()
+  const res = await fetch(`${API_BASE}/goals`, { headers })
+  if (!res.ok) throw new Error('Failed to fetch goals')
+  return res.json()
+}
+
+export async function saveGoals(goals: UserGoals): Promise<UserGoals> {
+  const headers = await getAuthHeaders()
+  const res = await fetch(`${API_BASE}/goals`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(goals),
+  })
+  if (!res.ok) throw new Error('Failed to save goals')
+  return res.json()
+}

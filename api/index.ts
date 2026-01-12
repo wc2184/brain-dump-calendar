@@ -341,4 +341,37 @@ Return JSON array only, no markdown:
   }
 })
 
+// Goals endpoints
+app.get('/api/goals', getUser, async (req: any, res) => {
+  const { data, error } = await supabase
+    .from('user_goals')
+    .select('mandatory_goals, nice_to_have_goals')
+    .eq('user_id', req.user.id)
+    .single()
+
+  if (error && error.code !== 'PGRST116') {
+    return res.status(500).json({ error: error.message })
+  }
+
+  res.json(data || { mandatory_goals: '', nice_to_have_goals: '' })
+})
+
+app.put('/api/goals', getUser, async (req: any, res) => {
+  const { mandatory_goals, nice_to_have_goals } = req.body
+
+  const { data, error } = await supabase
+    .from('user_goals')
+    .upsert({
+      user_id: req.user.id,
+      mandatory_goals: mandatory_goals || '',
+      nice_to_have_goals: nice_to_have_goals || '',
+      updated_at: new Date().toISOString()
+    })
+    .select()
+    .single()
+
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data)
+})
+
 export default app
