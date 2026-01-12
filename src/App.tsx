@@ -302,10 +302,9 @@ function App() {
         const dropPosition = sectionTasks.length
 
         if (linkedTask) {
-          // Existing task: unschedule and move to drop section
-          await taskHook.unscheduleTask(linkedTask.id)
+          // Existing task: atomic unschedule + move to drop section
           await calendarHook.removeEvent(calEvent.id)
-          await taskHook.moveTask(linkedTask.id, dropSection, dropPosition)
+          await taskHook.unscheduleAndMoveTask(linkedTask.id, dropSection, dropPosition)
         } else {
           // External calendar event: create new task from it
           const duration = Math.round((new Date(calEvent.end).getTime() - new Date(calEvent.start).getTime()) / 60000)

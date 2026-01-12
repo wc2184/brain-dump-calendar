@@ -107,6 +107,62 @@ export function useTasks(userId: string | undefined) {
     return updated
   }
 
+  const unscheduleAndMoveTask = async (taskId: string, toSection: SectionType, toIndex: number) => {
+    // First unschedule on backend
+    await api.updateTask(taskId, {
+      scheduled: null,
+      google_id: null
+    })
+
+    // Then do atomic local state update: unschedule + move + reorder
+    setTasks(prev => {
+      const task = prev.find(t => t.id === taskId)
+      if (!task) return prev
+
+      const fromSection = task.section
+      const updatedTasks = [...prev]
+
+      // Find and update the task
+      const taskIndex = updatedTasks.findIndex(t => t.id === taskId)
+      updatedTasks.splice(taskIndex, 1)
+
+      // Create unscheduled + moved task
+      const movedTask = { ...task, section: toSection, position: toIndex, scheduled: null, google_id: null }
+
+      // Insert at new position
+      const insertIndex = updatedTasks.findIndex(t => t.section === toSection && t.position >= toIndex)
+      if (insertIndex === -1) {
+        updatedTasks.push(movedTask)
+      } else {
+        updatedTasks.splice(insertIndex, 0, movedTask)
+      }
+
+      // Recalculate positions for affected sections
+      const sectionsToUpdate = new Set([fromSection, toSection])
+      sectionsToUpdate.forEach(section => {
+        updatedTasks
+          .filter(t => t.section === section)
+          .forEach((t, idx) => {
+            t.position = idx
+          })
+      })
+
+      return updatedTasks
+    })
+
+    // Sync positions to backend
+    const currentTasks = await api.fetchTasks()
+    const toSectionTasks = currentTasks.filter(t => t.section === toSection)
+    const reorderPayload = toSectionTasks.map((t, idx) => ({
+      id: t.id,
+      section: t.section,
+      position: idx
+    }))
+    if (reorderPayload.length > 0) {
+      await api.reorderTasks(reorderPayload)
+    }
+  }
+
   const getTasksBySection = (section: SectionType) => {
     return tasks
       .filter(t => t.section === section && !t.scheduled)
@@ -134,6 +190,7 @@ export function useTasks(userId: string | undefined) {
     moveTask,
     scheduleTask,
     unscheduleTask,
+    unscheduleAndMoveTask,
     getTasksBySection,
     restoreTask,
     reload: loadTasks,
