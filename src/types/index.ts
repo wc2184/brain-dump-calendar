@@ -68,3 +68,8 @@ export const BRAIN_DUMP_PROMPTS = [
   'Ideas that you\'re excited about',
   'Worries that are lingering in your mind',
 ]
+
+export interface UserGoals {
+  mandatory_goals: string
+  nice_to_have_goals: string
+}
