@@ -1,73 +1,83 @@
-# React + TypeScript + Vite
+# Brain Dump Calendar
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A productivity app: brain dump your thoughts → GPT extracts actionable tasks → drag to Google Calendar.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Brain Dump**: Write freely, AI extracts tasks with time estimates
+- **Drag & Drop**: Drag tasks to calendar, reorder within inbox
+- **Google Calendar Sync**: Events sync bidirectionally with Google Calendar
+- **3-Day View**: See yesterday, today, and tomorrow at a glance
+- **Compact Mode**: Toggle zoomed-out view for high-level planning
+- **Keyboard Shortcuts**: `n`/`p` navigate, `d`/`3` switch views, `c` compact, `t` today
+- **Event Editing**: Resize, recolor, rename events via drag or context menu
 
-## React Compiler
+## Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Frontend**: React + TypeScript + Tailwind CSS + Vite
+- **Backend**: Express (Vercel Serverless)
+- **Database**: Supabase (Postgres + Auth)
+- **APIs**: OpenAI GPT-4o-mini, Google Calendar API
+- **Drag & Drop**: @dnd-kit
 
-## Expanding the ESLint configuration
+## Local Development
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+```bash
+# Install dependencies
+npm install
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# Terminal 1 - API server
+npm run dev:api    # runs on :3001
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Terminal 2 - Frontend
+npm run dev        # runs on :5173
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Project Structure
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+src/
+├── components/     # React components (CalendarView, Sidebar, TaskBlock, etc.)
+├── hooks/          # useAuth, useTasks, useCalendar, useBrainDump
+├── lib/            # supabase.ts, api.ts
+└── types/          # TypeScript types + constants
+
+api/
+└── index.ts        # Express API (Vercel serverless function)
+```
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in:
+
+```bash
+# Frontend
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+
+# Backend
+SUPABASE_URL=
+SUPABASE_SERVICE_KEY=
+OPENAI_API_KEY=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+```
+
+## Deployment
+
+Deployed on Vercel. Push to `main` triggers auto-deploy.
+
+```bash
+git push origin main
+```
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `n` | Next day |
+| `p` | Previous day |
+| `t` | Today |
+| `d` | Day view |
+| `3` | 3-day view |
+| `c` | Toggle compact |
