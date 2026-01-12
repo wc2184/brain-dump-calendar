@@ -13,6 +13,7 @@ import { ContextMenu } from './components/ContextMenu'
 import { TaskBlock } from './components/TaskBlock'
 import { ReflectionLink } from './components/ReflectionLink'
 import { UndoToast } from './components/UndoToast'
+import { HelpModal } from './components/HelpModal'
 import { useReflectionLink } from './hooks/useReflectionLink'
 import { SECTIONS } from './types'
 import type { Task, CalendarEvent } from './types'
@@ -35,6 +36,9 @@ function App() {
   const [isDeleteMode, setIsDeleteMode] = useState(false)
   const [deletedItems, setDeletedItems] = useState<DeletedItem[]>([])
   const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Help modal state
+  const [showHelp, setShowHelp] = useState(false)
 
   // Sensor with distance activation - requires 5px movement to start drag
   const sensors = useSensors(
@@ -117,6 +121,21 @@ function App() {
     }
   }
 
+  const handleClearAllTasks = async () => {
+    const allTasks = taskHook.tasks.filter(t => !t.scheduled)
+    if (allTasks.length === 0) return
+
+    // Add all tasks to undo stack
+    for (const task of allTasks) {
+      addToUndoStack({ type: 'task', data: task })
+    }
+
+    // Delete all tasks
+    for (const task of allTasks) {
+      await taskHook.removeTask(task.id)
+    }
+  }
+
   const handleTasksCreated = async (newTasks: { title: string; duration: number }[]) => {
     for (const t of newTasks) {
       await taskHook.addTask(t.title, t.duration)
@@ -131,7 +150,7 @@ function App() {
       // Don't trigger if typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
 
-      switch (e.key.toLowerCase()) {
+      switch (e.key) {
         case 'n':
           calendarHook.goToNextDay()
           break
@@ -153,6 +172,9 @@ function App() {
         case 'b':
           e.preventDefault()
           brainDump.open()
+          break
+        case '?':
+          setShowHelp(prev => !prev)
           break
       }
     }
@@ -359,6 +381,13 @@ function App() {
           <h1 className="text-lg font-semibold text-neutral-800">🧠 Brain Dump Calendar</h1>
           <div className="flex items-center gap-4">
             <ReflectionLink url={reflectionLink.url} onSave={reflectionLink.save} />
+            <button
+              onClick={() => setShowHelp(true)}
+              className="w-6 h-6 flex items-center justify-center text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-full transition-colors"
+              title="Keyboard shortcuts (?)"
+            >
+              ?
+            </button>
             <span className="text-sm text-neutral-500">{user.email}</span>
             <button
               onClick={signOut}
@@ -377,6 +406,7 @@ function App() {
             onResize={setSidebarWidth}
             isDeleteMode={isDeleteMode}
             onDeleteModeClick={handleDeleteModeTask}
+            onClearAllTasks={handleClearAllTasks}
           />
           <CalendarView
             events={calendarHook.events}
@@ -425,6 +455,8 @@ function App() {
         onUndo={undoLast}
         onDismiss={dismissUndo}
       />
+
+      <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
 
       <DragOverlay>
         {activeTask && (
