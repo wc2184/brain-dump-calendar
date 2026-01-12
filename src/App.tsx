@@ -315,6 +315,9 @@ function App() {
       <BrainDumpModal
         isOpen={brainDump.isOpen}
         loading={brainDump.loading}
+        tentativeText={brainDump.tentativeText}
+        onTextChange={brainDump.updateTentativeText}
+        onBlur={brainDump.saveNow}
         onClose={brainDump.close}
         onSubmit={brainDump.submit}
       />

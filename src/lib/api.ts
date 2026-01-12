@@ -119,6 +119,7 @@ export async function braindump(text: string): Promise<{ title: string; duration
 export interface UserGoals {
   mandatory_goals: string
   nice_to_have_goals: string
+  tentative_braindump?: string
 }
 
 export async function getGoals(): Promise<UserGoals> {
@@ -128,7 +129,7 @@ export async function getGoals(): Promise<UserGoals> {
   return res.json()
 }
 
-export async function saveGoals(goals: UserGoals): Promise<UserGoals> {
+export async function saveGoals(goals: Partial<UserGoals>): Promise<UserGoals> {
   const headers = await getAuthHeaders()
   const res = await fetch(`${API_BASE}/goals`, {
     method: 'PUT',
@@ -137,6 +138,16 @@ export async function saveGoals(goals: UserGoals): Promise<UserGoals> {
   })
   if (!res.ok) throw new Error('Failed to save goals')
   return res.json()
+}
+
+export async function saveTentativeBraindump(text: string): Promise<void> {
+  const headers = await getAuthHeaders()
+  const res = await fetch(`${API_BASE}/goals`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ tentative_braindump: text }),
+  })
+  if (!res.ok) throw new Error('Failed to save tentative braindump')
 }
 
 export interface UserSettings {
