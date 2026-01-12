@@ -1,6 +1,6 @@
 import { DndContext, DragOverlay, pointerWithin, useSensor, useSensors, PointerSensor } from '@dnd-kit/core'
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { useTasks } from './hooks/useTasks'
 import { useCalendar } from './hooks/useCalendar'
@@ -12,9 +12,15 @@ import { BrainDumpModal } from './components/BrainDumpModal'
 import { ContextMenu } from './components/ContextMenu'
 import { TaskBlock } from './components/TaskBlock'
 import { ReflectionLink } from './components/ReflectionLink'
+import { UndoToast } from './components/UndoToast'
 import { useReflectionLink } from './hooks/useReflectionLink'
 import { SECTIONS } from './types'
 import type { Task, CalendarEvent } from './types'
+
+interface DeletedItem {
+  type: 'task' | 'event'
+  data: Task | CalendarEvent
+}
 
 function App() {
   const { user, loading: authLoading, signInWithGoogle, signOut } = useAuth()
@@ -24,6 +30,11 @@ function App() {
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null)
   const [sidebarWidth, setSidebarWidth] = useState(288) // 18rem = 288px
+
+  // Delete mode state
+  const [isDeleteMode, setIsDeleteMode] = useState(false)
+  const [deletedItems, setDeletedItems] = useState<DeletedItem[]>([])
+  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Sensor with distance activation - requires 5px movement to start drag
   const sensors = useSensors(
@@ -40,6 +51,71 @@ function App() {
     position: { x: number; y: number }
     event: CalendarEvent | null
   }>({ isOpen: false, position: { x: 0, y: 0 }, event: null })
+
+  // Shift key detection for delete mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsDeleteMode(true)
+    }
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsDeleteMode(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [])
+
+  // Undo stack helpers
+  const addToUndoStack = (item: DeletedItem) => {
+    setDeletedItems(prev => [...prev, item])
+    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current)
+    undoTimeoutRef.current = setTimeout(() => setDeletedItems([]), 10000)
+  }
+
+  const undoLast = async () => {
+    if (deletedItems.length === 0) return
+    const lastItem = deletedItems[deletedItems.length - 1]
+
+    if (lastItem.type === 'task') {
+      await taskHook.restoreTask(lastItem.data as Task)
+    } else {
+      // For events, we need to restore to calendar
+      // This will create a new event in Google Calendar
+      await calendarHook.restoreEvent(lastItem.data as CalendarEvent)
+    }
+
+    setDeletedItems(prev => prev.slice(0, -1))
+    // Reset the timeout
+    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current)
+    if (deletedItems.length > 1) {
+      undoTimeoutRef.current = setTimeout(() => setDeletedItems([]), 10000)
+    }
+  }
+
+  const dismissUndo = () => {
+    setDeletedItems([])
+    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current)
+  }
+
+  // Delete mode handlers
+  const handleDeleteModeTask = async (taskId: string) => {
+    const task = taskHook.tasks.find(t => t.id === taskId)
+    if (task) {
+      addToUndoStack({ type: 'task', data: task })
+      await taskHook.removeTask(taskId)
+    }
+  }
+
+  const handleDeleteModeEvent = async (eventId: string) => {
+    const event = calendarHook.events.find(e => e.id === eventId)
+    if (event) {
+      addToUndoStack({ type: 'event', data: event })
+      await calendarHook.removeEvent(eventId)
+    }
+  }
 
   const handleTasksCreated = async (newTasks: { title: string; duration: number }[]) => {
     for (const t of newTasks) {
@@ -294,7 +370,14 @@ function App() {
         </header>
 
         <div className="flex flex-1 overflow-hidden">
-          <Sidebar taskHook={taskHook} onBrainDump={brainDump.open} width={sidebarWidth} onResize={setSidebarWidth} />
+          <Sidebar
+            taskHook={taskHook}
+            onBrainDump={brainDump.open}
+            width={sidebarWidth}
+            onResize={setSidebarWidth}
+            isDeleteMode={isDeleteMode}
+            onDeleteModeClick={handleDeleteModeTask}
+          />
           <CalendarView
             events={calendarHook.events}
             visibleDates={calendarHook.visibleDates}
@@ -308,6 +391,8 @@ function App() {
             onPrevDay={calendarHook.goToPrevDay}
             onNextDay={calendarHook.goToNextDay}
             onToday={calendarHook.goToToday}
+            isDeleteMode={isDeleteMode}
+            onDeleteModeClick={handleDeleteModeEvent}
           />
         </div>
       </div>
@@ -333,6 +418,12 @@ function App() {
         onDurationChange={handleDurationChange}
         onTimeChange={handleTimeChange}
         onReturnToInbox={handleReturnToInbox}
+      />
+
+      <UndoToast
+        count={deletedItems.length}
+        onUndo={undoLast}
+        onDismiss={dismissUndo}
       />
 
       <DragOverlay>

@@ -16,6 +16,8 @@ interface Props {
   onPrevDay: () => void
   onNextDay: () => void
   onToday: () => void
+  isDeleteMode?: boolean
+  onDeleteModeClick?: (eventId: string) => void
 }
 
 const HOUR_HEIGHT_NORMAL = 150
@@ -204,7 +206,9 @@ export function CalendarView({
   onEventContextMenu,
   onPrevDay,
   onNextDay,
-  onToday
+  onToday,
+  isDeleteMode,
+  onDeleteModeClick
 }: Props) {
   const [hourRange, setHourRange] = useState(loadSavedRange)
   const [currentTime, setCurrentTime] = useState(() => new Date())
@@ -405,6 +409,8 @@ export function CalendarView({
                     totalColumns={layout.totalColumns}
                     onResize={onEventResize}
                     onContextMenu={onEventContextMenu}
+                    isDeleteMode={isDeleteMode}
+                    onDeleteModeClick={() => onDeleteModeClick?.(event.id)}
                   />
                 )
               })}

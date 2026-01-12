@@ -104,6 +104,17 @@ export function useCalendar(userId: string | undefined) {
     })
   }
 
+  // Restore a deleted event by re-creating it in Google Calendar
+  const restoreEvent = async (event: CalendarEvent) => {
+    // Note: This creates a NEW event in Google Calendar (different ID)
+    // We need to find a task that was linked to this event to restore it
+    // For now, we'll just add it back to local state - the API doesn't support
+    // restoring deleted Google events directly
+    // This will be handled at App level by re-creating via API
+    setEvents(prev => [...prev, event])
+    return event
+  }
+
   return {
     events,
     loading,
@@ -117,6 +128,7 @@ export function useCalendar(userId: string | undefined) {
     addEvent,
     updateEvent,
     removeEvent,
+    restoreEvent,
     goToPrevDay,
     goToNextDay,
     goToToday,

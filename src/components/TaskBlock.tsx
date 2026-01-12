@@ -9,9 +9,11 @@ interface Props {
   onDurationChange: (duration: number) => void
   onDelete: () => void
   onTitleChange?: (newTitle: string) => void
+  isDeleteMode?: boolean
+  onDeleteModeClick?: () => void
 }
 
-export function TaskBlock({ task, onDurationChange, onDelete, onTitleChange }: Props) {
+export function TaskBlock({ task, onDurationChange, onDelete, onTitleChange, isDeleteMode, onDeleteModeClick }: Props) {
   const {
     attributes,
     listeners,
@@ -25,6 +27,7 @@ export function TaskBlock({ task, onDurationChange, onDelete, onTitleChange }: P
   const [titleValue, setTitleValue] = useState(task.title)
   const [showMenu, setShowMenu] = useState(false)
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 })
+  const [isHovering, setIsHovering] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -105,15 +108,26 @@ export function TaskBlock({ task, onDurationChange, onDelete, onTitleChange }: P
     onDelete()
   }
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (isDeleteMode && onDeleteModeClick) {
+      e.preventDefault()
+      e.stopPropagation()
+      onDeleteModeClick()
+    }
+  }
+
   return (
     <>
       <div
         ref={setNodeRef}
         style={style}
-        className={`bg-white border border-neutral-200 rounded-lg p-2 shadow-sm ${
+        className={`bg-white border rounded-lg p-2 shadow-sm ${
           isDragging ? 'opacity-50 shadow-lg' : ''
-        }`}
+        } ${isDeleteMode && isHovering ? 'ring-2 ring-red-500 border-red-500 bg-red-50 cursor-pointer' : 'border-neutral-200'}`}
         onContextMenu={handleRightClick}
+        onClick={handleClick}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
       >
         <div className="flex items-start gap-2 mb-1.5" {...attributes} {...listeners}>
           {editing ? (

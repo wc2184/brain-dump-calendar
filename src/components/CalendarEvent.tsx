@@ -11,9 +11,11 @@ interface Props {
   totalColumns?: number
   onResize?: (eventId: string, startTime: string, duration: number) => void
   onContextMenu?: (event: CalendarEventType, position: { x: number; y: number }) => void
+  isDeleteMode?: boolean
+  onDeleteModeClick?: () => void
 }
 
-export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnIndex = 0, totalColumns = 1, onResize, onContextMenu }: Props) {
+export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnIndex = 0, totalColumns = 1, onResize, onContextMenu, isDeleteMode, onDeleteModeClick }: Props) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `event-${event.id}`,
     data: { type: 'calendar-event', event }
@@ -27,6 +29,8 @@ export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnI
   const baseTop = (startHour - displayStartHour) * hourHeight
   // True height based on duration with 2px gap at bottom
   const baseHeight = (durationMins / 60) * hourHeight - 2
+
+  const [isHovering, setIsHovering] = useState(false)
 
   // Real-time resize preview state
   const [resizePreview, setResizePreview] = useState<{
@@ -164,20 +168,37 @@ export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnI
     }
   }
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (isDeleteMode && onDeleteModeClick) {
+      e.preventDefault()
+      e.stopPropagation()
+      onDeleteModeClick()
+    }
+  }
+
+  // Delete mode styling
+  const deleteModeStyle = isDeleteMode && isHovering
+    ? { backgroundColor: '#ef4444', boxShadow: '0 0 0 2px #ef4444' }
+    : {}
+
   return (
     <div
       ref={setNodeRef}
-      className={`absolute rounded-md px-2 py-1 text-xs overflow-hidden cursor-grab hover:opacity-90 ${
+      className={`absolute rounded-md px-2 py-1 text-xs overflow-hidden hover:opacity-90 ${
         resizePreview ? 'opacity-80 shadow-lg' : ''
-      } ${isDragging ? 'opacity-50 shadow-xl z-50' : ''}`}
+      } ${isDragging ? 'opacity-50 shadow-xl z-50' : ''} ${isDeleteMode ? 'cursor-pointer' : 'cursor-grab'}`}
       style={{
         top: `${displayTop}px`,
         height: `${displayHeight}px`,
         backgroundColor: eventStyle.backgroundColor,
         color: eventStyle.color,
-        ...horizontalStyle
+        ...horizontalStyle,
+        ...deleteModeStyle
       }}
       onContextMenu={handleRightClick}
+      onClick={handleClick}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
       {...attributes}
       {...listeners}
     >

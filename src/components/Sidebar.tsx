@@ -8,9 +8,11 @@ interface Props {
   onBrainDump: () => void
   width: number
   onResize: (width: number) => void
+  isDeleteMode?: boolean
+  onDeleteModeClick?: (taskId: string) => void
 }
 
-export function Sidebar({ taskHook, onBrainDump, width, onResize }: Props) {
+export function Sidebar({ taskHook, onBrainDump, width, onResize, isDeleteMode, onDeleteModeClick }: Props) {
   const { getTasksBySection, updateTaskDuration, removeTask, updateTaskTitle, addTask } = taskHook
   const [showAddInput, setShowAddInput] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
@@ -108,6 +110,8 @@ export function Sidebar({ taskHook, onBrainDump, width, onResize }: Props) {
             onDelete={removeTask}
             onTitleChange={updateTaskTitle}
             hideHeader={section.id === 'inbox'}
+            isDeleteMode={isDeleteMode}
+            onDeleteModeClick={onDeleteModeClick}
           />
         </div>
       ))}

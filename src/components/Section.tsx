@@ -10,9 +10,11 @@ interface Props {
   onDelete: (taskId: string) => void
   onTitleChange: (taskId: string, newTitle: string) => void
   hideHeader?: boolean
+  isDeleteMode?: boolean
+  onDeleteModeClick?: (taskId: string) => void
 }
 
-export function Section({ section, tasks, onDurationChange, onDelete, onTitleChange, hideHeader }: Props) {
+export function Section({ section, tasks, onDurationChange, onDelete, onTitleChange, hideHeader, isDeleteMode, onDeleteModeClick }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: section.id })
 
   return (
@@ -41,6 +43,8 @@ export function Section({ section, tasks, onDurationChange, onDelete, onTitleCha
                 onDurationChange={(d) => onDurationChange(task.id, d)}
                 onDelete={() => onDelete(task.id)}
                 onTitleChange={(newTitle) => onTitleChange(task.id, newTitle)}
+                isDeleteMode={isDeleteMode}
+                onDeleteModeClick={() => onDeleteModeClick?.(task.id)}
               />
             ))}
           </div>
