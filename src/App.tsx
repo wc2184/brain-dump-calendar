@@ -260,7 +260,7 @@ function App() {
       if (!eventData?.event) return
       const calEvent = eventData.event as CalendarEvent
 
-      // Dropping event on a timeslot - move within calendar
+      // Dropping event on a timeslot - move within calendar (OPTIMISTIC)
       if (overId.startsWith('timeslot-')) {
         const parts = overId.split('-')
         // parts: ['timeslot', 'YYYY', 'MM', 'DD', 'HH', 'MM']
@@ -276,7 +276,8 @@ function App() {
         const originalEnd = new Date(calEvent.end)
         const duration = (originalEnd.getTime() - originalStart.getTime()) / 60000
 
-        await calendarHook.updateEvent(calEvent.id, {
+        // Optimistic update - UI updates immediately
+        calendarHook.updateEventOptimistic(calEvent.id, {
           startTime: dropDate.toISOString(),
           duration
         })
@@ -301,15 +302,22 @@ function App() {
         const sectionTasks = taskHook.getTasksBySection(dropSection)
         const dropPosition = sectionTasks.length
 
+        // OPTIMISTIC: Remove event from calendar immediately
+        calendarHook.removeEventOptimistic(calEvent.id)
+
         if (linkedTask) {
-          // Existing task: atomic unschedule + move to drop section
-          await calendarHook.removeEvent(calEvent.id)
-          await taskHook.unscheduleAndMoveTask(linkedTask.id, dropSection, dropPosition)
+          // Existing task: optimistic unschedule + move to drop section
+          taskHook.unscheduleAndMoveTask(
+            linkedTask.id,
+            dropSection,
+            dropPosition,
+            // Rollback: restore calendar event if API fails
+            () => calendarHook.addEvent(calEvent)
+          )
         } else {
           // External calendar event: create new task from it
           const duration = Math.round((new Date(calEvent.end).getTime() - new Date(calEvent.start).getTime()) / 60000)
-          await taskHook.addTask(calEvent.title, duration, dropSection)
-          await calendarHook.removeEvent(calEvent.id)
+          taskHook.addTask(calEvent.title, duration, dropSection)
         }
         return
       }
@@ -319,7 +327,7 @@ function App() {
     // Handle task drag
     const taskId = activeId
 
-    // Dropping on a time slot (format: timeslot-YYYY-MM-DD-HH-MM)
+    // Dropping on a time slot (format: timeslot-YYYY-MM-DD-HH-MM) - OPTIMISTIC
     if (overId.startsWith('timeslot-')) {
       const parts = overId.split('-')
       // parts: ['timeslot', 'YYYY', 'MM', 'DD', 'HH', 'MM']
@@ -329,8 +337,17 @@ function App() {
       const hour = parseInt(parts[4])
       const minute = parseInt(parts[5])
       const dropDate = new Date(year, month, day, hour, minute, 0, 0)
-      const calEvent = await taskHook.scheduleTask(taskId, dropDate.toISOString())
-      if (calEvent) calendarHook.addEvent(calEvent)
+
+      // Optimistic update - show event immediately, sync in background
+      const result = taskHook.scheduleTaskOptimistic(
+        taskId,
+        dropDate.toISOString(),
+        (tempId, realEvent) => calendarHook.replaceEvent(tempId, realEvent),
+        (tempId) => calendarHook.removeEventLocal(tempId) // rollback on failure
+      )
+      if (result?.tempEvent) {
+        calendarHook.addEvent(result.tempEvent)
+      }
       return
     }
 
