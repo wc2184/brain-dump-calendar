@@ -61,11 +61,13 @@ export function useAuth() {
   }, [])
 
   const signInWithGoogle = async () => {
+    const redirectUrl = window.location.origin
+    console.log('🔍 [Auth] Redirect URL:', redirectUrl)
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         scopes: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly',
-        redirectTo: window.location.origin,
+        redirectTo: redirectUrl,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent'  // Forces refresh token grant
