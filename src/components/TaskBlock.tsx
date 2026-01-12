@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useDroppable, useDndContext } from '@dnd-kit/core'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Task } from '../types'
@@ -17,11 +18,33 @@ export function TaskBlock({ task, onDurationChange, onDelete, onTitleChange, isD
   const {
     attributes,
     listeners,
-    setNodeRef,
+    setNodeRef: setSortableRef,
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id })
+  } = useSortable({ id: task.id, data: { section: task.section } })
+
+  // Also make this a droppable target for cross-section drops
+  const { setNodeRef: setDroppableRef } = useDroppable({
+    id: `task-drop-${task.id}`,
+    data: { taskId: task.id, section: task.section }
+  })
+
+  // Get active dragged item and current drop target to check cross-section hover
+  const { active, over } = useDndContext()
+  const isCalendarEventDrag = active?.data?.current?.type === 'calendar-event'
+  const activeSection = active?.data?.current?.section
+  const isDifferentSection = active && (isCalendarEventDrag || activeSection !== task.section)
+
+  // Check if this task is being hovered (either sortable or droppable ID)
+  const isBeingHoveredOver = over?.id === task.id || over?.id === `task-drop-${task.id}`
+  const showCrossSectionHighlight = isBeingHoveredOver && isDifferentSection && !isDragging
+
+  // Combine refs
+  const setNodeRef = (node: HTMLElement | null) => {
+    setSortableRef(node)
+    setDroppableRef(node)
+  }
 
   const [editing, setEditing] = useState(false)
   const [titleValue, setTitleValue] = useState(task.title)
@@ -130,14 +153,18 @@ export function TaskBlock({ task, onDurationChange, onDelete, onTitleChange, isD
       <div
         ref={setNodeRef}
         style={style}
-        className={`relative border rounded-lg p-2 shadow-sm ${
+        className={`relative border rounded-lg p-2 shadow-sm cursor-grab ${
           isDragging ? 'opacity-50 shadow-lg' : ''
-        } ${isDeleteMode && isHovering ? 'border-red-400 cursor-pointer' : 'bg-white border-neutral-200'}`}
+        } ${isDeleteMode && isHovering ? 'border-red-400 cursor-pointer' : 'bg-white border-neutral-200'} ${
+          showCrossSectionHighlight ? 'ring-2 ring-blue-400 bg-blue-50' : ''
+        }`}
         onContextMenu={handleRightClick}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
+        {...attributes}
+        {...listeners}
       >
         {/* Delete overlay */}
         {isDeleteMode && isHovering && (
@@ -145,7 +172,7 @@ export function TaskBlock({ task, onDurationChange, onDelete, onTitleChange, isD
             <span className="text-red-700 font-semibold text-sm">Delete</span>
           </div>
         )}
-        <div className="flex items-start gap-2 mb-1.5" {...attributes} {...listeners}>
+        <div className="flex items-start gap-2 mb-1.5">
           {editing ? (
             <input
               ref={inputRef}
@@ -159,7 +186,7 @@ export function TaskBlock({ task, onDurationChange, onDelete, onTitleChange, isD
               className="text-sm bg-white border border-blue-400 rounded px-1 flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           ) : (
-            <span className="text-sm text-neutral-800 cursor-grab flex-1 line-clamp-3">
+            <span className="text-sm text-neutral-800 flex-1 line-clamp-3">
               {task.title}
             </span>
           )}

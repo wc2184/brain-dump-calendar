@@ -3,6 +3,18 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { TaskBlock } from '../TaskBlock'
 import type { Task } from '../../types'
+import * as dndCore from '@dnd-kit/core'
+
+// Mock @dnd-kit/core
+vi.mock('@dnd-kit/core', () => ({
+  useDroppable: () => ({
+    setNodeRef: vi.fn(),
+  }),
+  useDndContext: vi.fn(() => ({
+    active: null,
+    over: null,
+  })),
+}))
 
 // Mock @dnd-kit/sortable
 vi.mock('@dnd-kit/sortable', () => ({
@@ -162,6 +174,71 @@ describe('TaskBlock', () => {
       await user.type(input, '{Enter}')
 
       expect(onTitleChange).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('cross-section drag highlighting', () => {
+    it('does NOT show highlight when dragging within same section', () => {
+      vi.mocked(dndCore.useDndContext).mockReturnValue({
+        active: { id: 'other-task', data: { current: { section: 'inbox' } } },
+        over: { id: 'task-1' },
+      } as any)
+
+      const { container } = render(<TaskBlock {...defaultProps} />)
+      const card = container.firstChild as HTMLElement
+
+      expect(card.className).not.toContain('ring-blue-400')
+      expect(card.className).not.toContain('bg-blue-50')
+    })
+
+    it('shows highlight when dragging from different section', () => {
+      vi.mocked(dndCore.useDndContext).mockReturnValue({
+        active: { id: 'other-task', data: { current: { section: 'mustdo' } } },
+        over: { id: 'task-1' },
+      } as any)
+
+      const { container } = render(<TaskBlock {...defaultProps} />)
+      const card = container.firstChild as HTMLElement
+
+      expect(card.className).toContain('ring-blue-400')
+      expect(card.className).toContain('bg-blue-50')
+    })
+
+    it('shows highlight when hovering via task-drop ID', () => {
+      vi.mocked(dndCore.useDndContext).mockReturnValue({
+        active: { id: 'other-task', data: { current: { section: '2min' } } },
+        over: { id: 'task-drop-task-1' },
+      } as any)
+
+      const { container } = render(<TaskBlock {...defaultProps} />)
+      const card = container.firstChild as HTMLElement
+
+      expect(card.className).toContain('ring-blue-400')
+    })
+
+    it('does NOT show highlight when no active drag', () => {
+      vi.mocked(dndCore.useDndContext).mockReturnValue({
+        active: null,
+        over: { id: 'task-1' },
+      } as any)
+
+      const { container } = render(<TaskBlock {...defaultProps} />)
+      const card = container.firstChild as HTMLElement
+
+      expect(card.className).not.toContain('ring-blue-400')
+    })
+
+    it('shows highlight when dragging calendar event over task', () => {
+      vi.mocked(dndCore.useDndContext).mockReturnValue({
+        active: { id: 'event-123', data: { current: { type: 'calendar-event', event: {} } } },
+        over: { id: 'task-1' },
+      } as any)
+
+      const { container } = render(<TaskBlock {...defaultProps} />)
+      const card = container.firstChild as HTMLElement
+
+      expect(card.className).toContain('ring-blue-400')
+      expect(card.className).toContain('bg-blue-50')
     })
   })
 })

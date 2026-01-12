@@ -1,4 +1,4 @@
-import { useDroppable } from '@dnd-kit/core'
+import { useDroppable, useDndContext } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import type { Section as SectionType, Task } from '../types'
 import { TaskBlock } from './TaskBlock'
@@ -16,12 +16,18 @@ interface Props {
 
 export function Section({ section, tasks, onDurationChange, onDelete, onTitleChange, hideHeader, isDeleteMode, onDeleteModeClick }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: section.id })
+  const { active } = useDndContext()
+
+  // Highlight for: calendar event drags OR task from different section
+  const isCalendarEventDrag = active?.data?.current?.type === 'calendar-event'
+  const activeSection = active?.data?.current?.section
+  const showHighlight = isOver && (isCalendarEventDrag || (activeSection && activeSection !== section.id))
 
   return (
     <div
       ref={setNodeRef}
-      className={`mb-4 p-2 -m-2 rounded-lg transition-all ${
-        isOver ? 'bg-blue-100 ring-2 ring-blue-400 ring-inset shadow-inner' : ''
+      className={`mb-4 p-2 -m-2 rounded-lg transition-all flex-1 ${
+        showHighlight ? 'bg-blue-100 ring-2 ring-blue-400 ring-inset shadow-inner' : ''
       }`}
     >
       {!hideHeader && (
