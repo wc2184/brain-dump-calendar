@@ -11,6 +11,8 @@ import { CalendarView } from './components/CalendarView'
 import { BrainDumpModal } from './components/BrainDumpModal'
 import { ContextMenu } from './components/ContextMenu'
 import { TaskBlock } from './components/TaskBlock'
+import { ReflectionLink } from './components/ReflectionLink'
+import { useReflectionLink } from './hooks/useReflectionLink'
 import { SECTIONS } from './types'
 import type { Task, CalendarEvent } from './types'
 
@@ -18,6 +20,7 @@ function App() {
   const { user, loading: authLoading, signInWithGoogle, signOut } = useAuth()
   const taskHook = useTasks(user?.id)
   const calendarHook = useCalendar(user?.id)
+  const reflectionLink = useReflectionLink()
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null)
   const [sidebarWidth, setSidebarWidth] = useState(288) // 18rem = 288px
@@ -278,7 +281,8 @@ function App() {
       <div className="h-screen bg-neutral-50 flex flex-col overflow-hidden">
         <header className="h-14 border-b border-neutral-200 bg-white px-4 flex items-center justify-between">
           <h1 className="text-lg font-semibold text-neutral-800">🧠 Brain Dump Calendar</h1>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            <ReflectionLink url={reflectionLink.url} onSave={reflectionLink.save} />
             <span className="text-sm text-neutral-500">{user.email}</span>
             <button
               onClick={signOut}

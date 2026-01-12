@@ -374,4 +374,36 @@ app.put('/api/goals', getUser, async (req: any, res) => {
   res.json(data)
 })
 
+// Settings endpoints (reflection_url stored in user_goals)
+app.get('/api/settings', getUser, async (req: any, res) => {
+  const { data, error } = await supabase
+    .from('user_goals')
+    .select('reflection_url')
+    .eq('user_id', req.user.id)
+    .single()
+
+  if (error && error.code !== 'PGRST116') {
+    return res.status(500).json({ error: error.message })
+  }
+
+  res.json({ reflection_url: data?.reflection_url || '' })
+})
+
+app.put('/api/settings', getUser, async (req: any, res) => {
+  const { reflection_url } = req.body
+
+  const { data, error } = await supabase
+    .from('user_goals')
+    .upsert({
+      user_id: req.user.id,
+      reflection_url: reflection_url || '',
+      updated_at: new Date().toISOString()
+    })
+    .select('reflection_url')
+    .single()
+
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ reflection_url: data?.reflection_url || '' })
+})
+
 export default app

@@ -138,3 +138,25 @@ export async function saveGoals(goals: UserGoals): Promise<UserGoals> {
   if (!res.ok) throw new Error('Failed to save goals')
   return res.json()
 }
+
+export interface UserSettings {
+  reflection_url: string
+}
+
+export async function getSettings(): Promise<UserSettings> {
+  const headers = await getAuthHeaders()
+  const res = await fetch(`${API_BASE}/settings`, { headers })
+  if (!res.ok) throw new Error('Failed to fetch settings')
+  return res.json()
+}
+
+export async function saveSettings(settings: UserSettings): Promise<UserSettings> {
+  const headers = await getAuthHeaders()
+  const res = await fetch(`${API_BASE}/settings`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(settings),
+  })
+  if (!res.ok) throw new Error('Failed to save settings')
+  return res.json()
+}
