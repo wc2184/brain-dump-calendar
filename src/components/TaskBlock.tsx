@@ -132,7 +132,7 @@ export function TaskBlock({ task, onDurationChange, onDelete, onTitleChange, isD
         style={style}
         className={`relative border rounded-lg p-2 shadow-sm ${
           isDragging ? 'opacity-50 shadow-lg' : ''
-        } ${isDeleteMode && isHovering ? 'bg-red-500 border-red-500 cursor-pointer' : 'bg-white border-neutral-200'}`}
+        } ${isDeleteMode && isHovering ? 'border-red-400 cursor-pointer' : 'bg-white border-neutral-200'}`}
         onContextMenu={handleRightClick}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
@@ -141,8 +141,8 @@ export function TaskBlock({ task, onDurationChange, onDelete, onTitleChange, isD
       >
         {/* Delete overlay */}
         {isDeleteMode && isHovering && (
-          <div className="absolute inset-0 flex items-center justify-center bg-red-500 rounded-lg z-10">
-            <span className="text-white font-semibold text-sm">Delete</span>
+          <div className="absolute inset-0 flex items-center justify-center bg-red-400/50 rounded-lg z-10">
+            <span className="text-red-700 font-semibold text-sm">Delete</span>
           </div>
         )}
         <div className="flex items-start gap-2 mb-1.5" {...attributes} {...listeners}>

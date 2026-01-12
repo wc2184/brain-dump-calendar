@@ -194,7 +194,7 @@ export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnI
       style={{
         top: `${displayTop}px`,
         height: `${displayHeight}px`,
-        backgroundColor: isDeleteMode && isHovering ? '#ef4444' : eventStyle.backgroundColor,
+        backgroundColor: eventStyle.backgroundColor,
         color: eventStyle.color,
         ...horizontalStyle
       }}
@@ -208,8 +208,8 @@ export function CalendarEvent({ event, hourHeight, displayStartHour = 0, columnI
     >
       {/* Delete overlay */}
       {isDeleteMode && isHovering && (
-        <div className="absolute inset-0 flex items-center justify-center bg-red-500 rounded-md z-10">
-          <span className="text-white font-semibold text-xs">Delete</span>
+        <div className="absolute inset-0 flex items-center justify-center bg-red-400/50 rounded-md z-10">
+          <span className="text-red-700 font-semibold text-xs">Delete</span>
         </div>
       )}
       {/* Resize handles - now available for ALL events */}
