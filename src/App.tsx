@@ -30,7 +30,7 @@ function App() {
   const reflectionLink = useReflectionLink()
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null)
-  const [sidebarWidth, setSidebarWidth] = useState(288) // 18rem = 288px
+  const [sidebarWidth, setSidebarWidth] = useState(750) // ~3x original width
 
   // Delete mode state
   const [isDeleteMode, setIsDeleteMode] = useState(false)
@@ -254,12 +254,14 @@ function App() {
     const activeId = active.id as string
     const overId = over.id as string
 
-    // Handle calendar event move
-    // Format: timeslot-YYYY-MM-DD-HH-MM
-    if (activeId.startsWith('event-') && overId.startsWith('timeslot-')) {
+    // Handle calendar event drag
+    if (activeId.startsWith('event-')) {
       const eventData = active.data.current
-      if (eventData?.event) {
-        const calEvent = eventData.event as CalendarEvent
+      if (!eventData?.event) return
+      const calEvent = eventData.event as CalendarEvent
+
+      // Dropping event on a timeslot - move within calendar (OPTIMISTIC)
+      if (overId.startsWith('timeslot-')) {
         const parts = overId.split('-')
         // parts: ['timeslot', 'YYYY', 'MM', 'DD', 'HH', 'MM']
         const year = parseInt(parts[1])
@@ -274,11 +276,50 @@ function App() {
         const originalEnd = new Date(calEvent.end)
         const duration = (originalEnd.getTime() - originalStart.getTime()) / 60000
 
-
-        await calendarHook.updateEvent(calEvent.id, {
+        // Optimistic update - UI updates immediately
+        calendarHook.updateEventOptimistic(calEvent.id, {
           startTime: dropDate.toISOString(),
           duration
         })
+        return
+      }
+
+      // Dropping event on a sidebar section or task - return to sidebar
+      const targetSectionId = SECTIONS.find(s => s.id === overId)?.id
+      const targetTaskMatch = overId.match(/^task-drop-(.+)$/)
+      const targetTaskId = targetTaskMatch ? targetTaskMatch[1] : (taskHook.tasks.find(t => t.id === overId)?.id)
+      const targetTask = targetTaskId ? taskHook.tasks.find(t => t.id === targetTaskId) : null
+
+      const dropSection = targetSectionId || targetTask?.section
+      if (dropSection) {
+        // Find the linked task - check both taskId and google_id
+        const linkedTask = taskHook.tasks.find(t =>
+          (calEvent.taskId && t.id === calEvent.taskId) ||
+          t.google_id === calEvent.id
+        )
+
+        // Get position BEFORE any state changes
+        const sectionTasks = taskHook.getTasksBySection(dropSection)
+        const dropPosition = sectionTasks.length
+
+        // OPTIMISTIC: Remove event from calendar immediately
+        calendarHook.removeEventOptimistic(calEvent.id)
+
+        if (linkedTask) {
+          // Existing task: optimistic unschedule + move to drop section
+          taskHook.unscheduleAndMoveTask(
+            linkedTask.id,
+            dropSection,
+            dropPosition,
+            // Rollback: restore calendar event if API fails
+            () => calendarHook.addEvent(calEvent)
+          )
+        } else {
+          // External calendar event: create new task from it
+          const duration = Math.round((new Date(calEvent.end).getTime() - new Date(calEvent.start).getTime()) / 60000)
+          taskHook.addTask(calEvent.title, duration, dropSection)
+        }
+        return
       }
       return
     }
@@ -286,7 +327,7 @@ function App() {
     // Handle task drag
     const taskId = activeId
 
-    // Dropping on a time slot (format: timeslot-YYYY-MM-DD-HH-MM)
+    // Dropping on a time slot (format: timeslot-YYYY-MM-DD-HH-MM) - OPTIMISTIC
     if (overId.startsWith('timeslot-')) {
       const parts = overId.split('-')
       // parts: ['timeslot', 'YYYY', 'MM', 'DD', 'HH', 'MM']
@@ -296,8 +337,17 @@ function App() {
       const hour = parseInt(parts[4])
       const minute = parseInt(parts[5])
       const dropDate = new Date(year, month, day, hour, minute, 0, 0)
-      const calEvent = await taskHook.scheduleTask(taskId, dropDate.toISOString())
-      if (calEvent) calendarHook.addEvent(calEvent)
+
+      // Optimistic update - show event immediately, sync in background
+      const result = taskHook.scheduleTaskOptimistic(
+        taskId,
+        dropDate.toISOString(),
+        (tempId, realEvent) => calendarHook.replaceEvent(tempId, realEvent),
+        (tempId) => calendarHook.removeEventLocal(tempId) // rollback on failure
+      )
+      if (result?.tempEvent) {
+        calendarHook.addEvent(result.tempEvent)
+      }
       return
     }
 
@@ -305,11 +355,33 @@ function App() {
     const targetSection = SECTIONS.find(s => s.id === overId)?.id
     const targetTask = taskHook.tasks.find(t => t.id === overId)
 
+    // Handle cross-section drop on task (task-drop-{id} pattern)
+    const taskDropMatch = overId.match(/^task-drop-(.+)$/)
+    const crossSectionTargetTask = taskDropMatch ? taskHook.tasks.find(t => t.id === taskDropMatch[1]) : null
+
     if (targetSection) {
-      const sectionTasks = taskHook.getTasksBySection(targetSection)
-      await taskHook.moveTask(taskId, targetSection, sectionTasks.length)
+      // Use Infinity to ensure we append to the very end (insertIndex will be -1)
+      await taskHook.moveTask(taskId, targetSection, Infinity)
     } else if (targetTask) {
-      await taskHook.moveTask(taskId, targetTask.section, targetTask.position)
+      // Same-section reorder via sortable
+      const draggedTask = taskHook.tasks.find(t => t.id === taskId)
+      if (draggedTask && draggedTask.section === targetTask.section) {
+        // Same section reorder
+        // When dragging DOWN, use position+1 to insert AFTER target
+        // When dragging UP, use target position to insert AT target
+        const newPosition = draggedTask.position < targetTask.position
+          ? targetTask.position + 1  // dragging down: insert after target
+          : targetTask.position      // dragging up: insert at target position
+        await taskHook.moveTask(taskId, targetTask.section, newPosition)
+      } else {
+        await taskHook.moveTask(taskId, targetTask.section, targetTask.position)
+      }
+    } else if (crossSectionTargetTask) {
+      // Cross-section drop on a task - move to that section at target position
+      const draggedTask = taskHook.tasks.find(t => t.id === taskId)
+      if (draggedTask && draggedTask.section !== crossSectionTargetTask.section) {
+        await taskHook.moveTask(taskId, crossSectionTargetTask.section, crossSectionTargetTask.position)
+      }
     }
   }
 

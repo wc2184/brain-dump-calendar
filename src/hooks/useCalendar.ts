@@ -81,10 +81,68 @@ export function useCalendar(userId: string | undefined) {
     setEvents(prev => [...prev, event])
   }
 
+  // Replace a temp event with the real event (for optimistic updates)
+  const replaceEvent = (tempId: string, realEvent: CalendarEvent) => {
+    setEvents(prev => prev.map(e => e.id === tempId ? realEvent : e))
+  }
+
+  // Remove event by ID (for rollback without API call)
+  const removeEventLocal = (eventId: string) => {
+    setEvents(prev => prev.filter(e => e.id !== eventId))
+  }
+
+  // Optimistic update - updates UI immediately, then syncs with API
+  const updateEventOptimistic = (eventId: string, updates: { startTime: string; duration: number }) => {
+    // Calculate new end time
+    const newEnd = new Date(new Date(updates.startTime).getTime() + updates.duration * 60000)
+
+    // Store original event for rollback
+    let originalEvent: CalendarEvent | undefined
+    setEvents(prev => {
+      originalEvent = prev.find(e => e.id === eventId)
+      return prev.map(e => {
+        if (e.id !== eventId) return e
+        return {
+          ...e,
+          start: updates.startTime,
+          end: newEnd.toISOString()
+        }
+      })
+    })
+
+    // Fire API call in background (don't await)
+    api.updateCalendarEvent(eventId, updates).catch(err => {
+      console.error('Failed to update event, rolling back:', err)
+      // Rollback to original state
+      if (originalEvent) {
+        setEvents(prev => prev.map(e => e.id === eventId ? originalEvent! : e))
+      }
+    })
+  }
+
   const updateEvent = async (eventId: string, updates: CalendarEventUpdate) => {
     const updated = await api.updateCalendarEvent(eventId, updates)
     setEvents(prev => prev.map(e => e.id === eventId ? updated : e))
     return updated
+  }
+
+  // Optimistic remove - removes from UI immediately, then syncs with API
+  const removeEventOptimistic = (eventId: string) => {
+    // Store original event for rollback
+    let removedEvent: CalendarEvent | undefined
+    setEvents(prev => {
+      removedEvent = prev.find(e => e.id === eventId)
+      return prev.filter(e => e.id !== eventId)
+    })
+
+    // Fire API call in background
+    api.deleteCalendarEvent(eventId).catch(err => {
+      console.error('Failed to delete event, rolling back:', err)
+      // Rollback - add event back
+      if (removedEvent) {
+        setEvents(prev => [...prev, removedEvent!])
+      }
+    })
   }
 
   const removeEvent = async (eventId: string) => {
@@ -126,8 +184,12 @@ export function useCalendar(userId: string | undefined) {
     toggleCompact,
     dateRange,
     addEvent,
+    replaceEvent,
+    removeEventLocal,
     updateEvent,
+    updateEventOptimistic,
     removeEvent,
+    removeEventOptimistic,
     restoreEvent,
     goToPrevDay,
     goToNextDay,
