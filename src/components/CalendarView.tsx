@@ -37,12 +37,9 @@ function loadSavedRange(): { start: number; end: number } {
   return { start: 7, end: 24 } // Default 7am to 12am
 }
 
-// Format date as YYYY-MM-DD for droppable ID (uses local date, not UTC)
+// Format date as YYYY-MM-DD for droppable ID
 function formatDateKey(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  return date.toISOString().split('T')[0]
 }
 
 // Check if two dates are the same day
@@ -338,14 +335,6 @@ export function CalendarView({
           >
             {isCompact ? 'Expand' : 'Compact'}
           </button>
-
-          {/* Current Time + Timezone */}
-          <span className="text-sm text-neutral-500 font-medium">
-            {currentTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-            <span className="text-neutral-400 ml-1">
-              ({Intl.DateTimeFormat().resolvedOptions().timeZone.split('/').pop()?.replace(/_/g, ' ')})
-            </span>
-          </span>
         </div>
 
         <button
